@@ -1,7 +1,7 @@
+// --- Canvas Setup ---
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// --- Canvas an Bildschirm anpassen ---
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -25,8 +25,6 @@ const player = {
     vy: 0,
     jumping: false
 };
-
-// Startposition auf Boden
 player.y = canvas.height - groundHeight - player.height;
 
 // --- Hindernis ---
@@ -35,7 +33,6 @@ const obstacle = {
     width: 40,
     height: 60
 };
-
 function resetObstacle() {
     obstacle.x = canvas.width + Math.random() * 300;
 }
@@ -49,12 +46,51 @@ function jump() {
     }
     if (gameOver) restart();
 }
-
-window.addEventListener("keydown", e => {
-    if (e.code === "Space") jump();
-});
-
+window.addEventListener("keydown", e => { if(e.code==="Space") jump(); });
 window.addEventListener("touchstart", jump);
+
+// --- Firebase Highscore Funktionen ---
+async function saveScore(score) {
+    if(!window.db) return;
+    try {
+        const playerName = prompt("Gib deinen Namen ein:") || "Spieler";
+
+        // Firebase v10 korrekt: importiere ref & push
+        const { ref, push } = await import("https://www.gstatic.com/firebasejs/10.6.1/firebase-database.js");
+
+        const scoresRef = ref(window.db, 'scores');
+        await push(scoresRef, { name: playerName, score: score });
+
+    } catch(e) {
+        console.error("Score konnte nicht gespeichert werden:", e);
+    }
+}
+
+async function showHighscores() {
+    if(!window.db) return;
+    try {
+        const { ref, get, query, orderByChild, limitToLast } = await import("https://www.gstatic.com/firebasejs/10.6.1/firebase-database.js");
+
+        const scoresRef = ref(window.db, 'scores');
+        const topQuery = query(scoresRef, orderByChild('score'), limitToLast(20));
+        const snapshot = await get(topQuery);
+
+        const highscores = [];
+        snapshot.forEach(child => highscores.push(child.val()));
+        highscores.sort((a,b)=>b.score-a.score);
+
+        // Top 20 auf Canvas anzeigen
+        ctx.fillStyle = "#00eaff";
+        ctx.font = "20px sans-serif";
+        ctx.fillText("Top 20 Highscores:", 20, 80);
+        highscores.forEach((entry,i)=>{
+            ctx.fillText(`${i+1}. ${entry.name}: ${entry.score}`, 20, 110 + i*25);
+        });
+
+    } catch(e) {
+        console.error("Highscores konnten nicht geladen werden:", e);
+    }
+}
 
 // --- Spiel-Reset ---
 function restart() {
@@ -68,7 +104,7 @@ function restart() {
 
 // --- Game Loop ---
 function update() {
-    if (gameOver) return;
+    if(gameOver) return;
 
     // Spieler bewegen
     player.vy += gravity;
@@ -76,7 +112,7 @@ function update() {
 
     // Boden-Kollision
     const groundY = canvas.height - groundHeight - player.height;
-    if (player.y >= groundY) {
+    if(player.y >= groundY) {
         player.y = groundY;
         player.vy = 0;
         player.jumping = false;
@@ -84,7 +120,7 @@ function update() {
 
     // Hindernis bewegen
     obstacle.x -= gameSpeed;
-    if (obstacle.x + obstacle.width < 0) {
+    if(obstacle.x + obstacle.width < 0) {
         resetObstacle();
         score++;
         gameSpeed += 0.2;
@@ -98,39 +134,36 @@ function update() {
         player.y + player.height > canvas.height - groundHeight - obstacle.height
     ) {
         gameOver = true;
+        saveScore(score).then(showHighscores);
     }
 }
 
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
     // Boden
     ctx.fillStyle = "#444";
-    ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+    ctx.fillRect(0,canvas.height-groundHeight,canvas.width,groundHeight);
 
     // Spieler
     ctx.fillStyle = "white";
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+    ctx.fillRect(player.x,player.y,player.width,player.height);
 
     // Hindernis
     ctx.fillStyle = "red";
-    ctx.fillRect(
-        obstacle.x,
-        canvas.height - groundHeight - obstacle.height,
-        obstacle.width,
-        obstacle.height
-    );
+    ctx.fillRect(obstacle.x,canvas.height-groundHeight-obstacle.height,obstacle.width,obstacle.height);
 
     // Score
     ctx.fillStyle = "white";
     ctx.font = "24px sans-serif";
     ctx.fillText(`Score: ${score}`, 20, 40);
 
-    if (gameOver) {
+    // Game Over
+    if(gameOver) {
         ctx.font = "48px sans-serif";
-        ctx.fillText("GAME OVER", canvas.width / 2 - 130, canvas.height / 2);
+        ctx.fillText("GAME OVER", canvas.width/2-130, canvas.height/2);
         ctx.font = "20px sans-serif";
-        ctx.fillText("Tippen oder Space zum Neustart", canvas.width / 2 - 150, canvas.height / 2 + 40);
+        ctx.fillText("Tippen oder Space zum Neustart", canvas.width/2-150, canvas.height/2+40);
     }
 }
 
@@ -141,4 +174,3 @@ function loop() {
 }
 
 loop();
-
