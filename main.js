@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
-import { getDatabase, ref, set, get } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-database.js';
+import { getDatabase, ref, get, push } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-database.js';
 
 // --- Canvas Setup ---
 const canvas = document.getElementById("game");
@@ -38,6 +38,7 @@ let cameraOffsetY = 0;
 let cameraTargetY = 0;
 let highscoreSaved = false;
 let currentTopScores = [];
+let gameStarted = false;
 
 // ---Bodenwdw
 let groundHeight = 100;
@@ -91,26 +92,37 @@ function getPlayerName() {
 }
 
 function saveScore(name, score) {
-    const scoreRef = ref(db, 'highscores/' + name);
-    set(scoreRef, { score: score })
-        .then(() => console.log("Score gespeichert:", name, score))
+    const scoresRef = ref(db, 'highscores');
+    push(scoresRef, {
+        name: name,
+        score: score,
+        time: Date.now()
+    })
+        .then(() => console.log("Score gespeichert"))
         .catch(err => console.error("Fehler beim Speichern:", err));
 }
 
-async function getTopScores(limit = 20) {
+async function loadHighscores(limit = 20) {
     const snapshot = await get(ref(db, 'highscores'));
     if (!snapshot.exists()) return [];
-    const scoresArray = Object.entries(snapshot.val()).map(([name, data]) => ({ name, score: data.score }));
-    scoresArray.sort((a, b) => b.score - a.score);
-    return scoresArray.slice(0, limit);
+
+    const list = Object.values(snapshot.val());
+    list.sort((a, b) => b.score - a.score);
+
+    return list.slice(0, limit);
 }
 
 function drawHighscores(scores) {
     ctx.fillStyle = "white";
     ctx.font = "20px sans-serif";
     ctx.fillText("Highscores:", 20, 80);
-    scores.forEach((entry, i) => {
-        ctx.fillText(`${i + 1}. ${entry.name}: ${entry.score}`, 20, 110 + i * 25);
+
+    scores.forEach((e, i) => {
+        ctx.fillText(
+            `${i + 1}. ${e.name}: ${e.score}`,
+            20,
+            110 + i * 25
+        );
     });
 }
 
@@ -216,7 +228,6 @@ function update() {
     }
 
     // Spieler-Bobbing nur, wenn auf dem Boden
-    let playerBob = 0;
     if (!player.jumping) {
         const bobAmplitude = 3;   // Höhe des Bobs
         const bobSpeed = 0.02;   // Geschwindigkeit
@@ -241,13 +252,6 @@ function update() {
             gameOver = true;
         }
 
-        if (gameOver && !highscoreSaved) {
-            const playerName = getPlayerName();
-            saveScore(playerName, score);
-            highscoreSaved = true;
-            getTopScores().then(scores => currentTopScores = scores);
-        }
-
         // Punkt + entfernen
         if (o.x + o.width < 0) {
             obstacles.splice(i, 1);
@@ -259,10 +263,28 @@ function update() {
     // Neues Hindernis?
     nextObstacleIn -= gameSpeed;
     if (nextObstacleIn <= 0) createObstacle();
+
+    if (gameOver && !highscoreSaved) {
+        const name = getPlayerName();
+        saveScore(name, score);
+        loadHighscores().then(scores => {
+            currentTopScores = scores;
+        });
+        highscoreSaved = true;
+    }
 }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!gameStarted) {
+        ctx.fillStyle = "white";
+        ctx.font = "48px sans-serif";
+        ctx.fillText("RUNNER", canvas.width / 2 - 100, canvas.height / 2 - 50);
+        ctx.font = "24px sans-serif";
+        ctx.fillText("Drücke Space oder Klick auf Start", canvas.width / 2 - 150, canvas.height / 2);
+        return; // nichts anderes wird gezeichnet
+    }
 
     // Wolken
     drawClouds();
@@ -283,7 +305,7 @@ function draw() {
         ctx.lineTo(x, groundTopY + groundVisualHeight + cameraOffsetY);
         ctx.stroke();
     }
-   
+
 
     // Unterer Boden
     ctx.fillStyle = "#333";
@@ -341,5 +363,19 @@ function loop() {
     draw();
     requestAnimationFrame(loop);
 }
+// --- Input: Start Game ---
+function startGame() {
+    if (!gameStarted) {
+        gameStarted = true;
+        restart(); // Reset Startwerte
+    }
+}
+
+window.addEventListener("keydown", e => { 
+    if (e.code === "Space") startGame(); 
+});
+window.addEventListener("touchstart", startGame);
+
+// --- Game Loop starten ---
 
 loop();
