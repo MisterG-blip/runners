@@ -26,30 +26,6 @@
 <body>
     <canvas id="game"></canvas>
 
-    <!-- Firebase SDK als ES Module -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.24.0/firebase-app.js";
-        import { getDatabase } from "https://www.gstatic.com/firebasejs/10.24.0/firebase-database.js";
-
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyA4UMR2WEw_ggya5gPHsNjqudQo0lW8C2w",
-            authDomain: "runners-game.firebaseapp.com",
-            databaseURL: "https://runners-game-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "runners-game",
-            storageBucket: "runners-game.appspot.com",
-            messagingSenderId: "917364422556",
-            appId: "1:917364422556:web:6947c132a12e5953d9fa59",
-            measurementId: "G-PSZLWSSTQX"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        // db kannst du jetzt in main.js weiterverwenden
-        window.db = db; // optional, damit main.js Zugriff hat
-    </script>
-
     <script src="main.js" type="module"></script>
 </body>
 

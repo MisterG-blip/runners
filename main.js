@@ -1,3 +1,6 @@
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
+import { getDatabase, ref, set, get } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-database.js';
+
 // --- Canvas Setup ---
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -9,16 +12,32 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
+// --- Firebase konfigurieren ---
+const firebaseConfig = {
+    apiKey: "AIzaSyA4UMR2WEw_ggya5gPHsNjqudQo0lW8C2w",
+    authDomain: "runners-game.firebaseapp.com",
+    databaseURL: "https://runners-game-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "runners-game",
+    storageBucket: "runners-game.appspot.com",
+    messagingSenderId: "917364422556",
+    appId: "1:917364422556:web:6947c132a12e5953d9fa59",
+    measurementId: "G-PSZLWSSTQX"
+};
+// Firebase App initialisieren
+const app = initializeApp(firebaseConfig);
+// Realtime Database
+const db = getDatabase(app);
+
+
 // --- Spielvariablen ---
 let gravity = 0.8;
 let gameSpeed = 6;
 let score = 0;
 let gameOver = false;
-let jumpStartTime = 0;
-let jumpDuration = 400; // Dauer des Sprungs in ms
-let isJumping = false;
 let cameraOffsetY = 0;
 let cameraTargetY = 0;
+let highscoreSaved = false;
+let currentTopScores = [];
 
 // ---Bodenwdw
 let groundHeight = 100;
@@ -62,6 +81,39 @@ function randomRange(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+function getPlayerName() {
+    let name = localStorage.getItem("playerName");
+    if (!name) {
+        name = prompt("Gib deinen Namen ein:") || "Anonym";
+        localStorage.setItem("playerName", name);
+    }
+    return name;
+}
+
+function saveScore(name, score) {
+    const scoreRef = ref(db, 'highscores/' + name);
+    set(scoreRef, { score: score })
+        .then(() => console.log("Score gespeichert:", name, score))
+        .catch(err => console.error("Fehler beim Speichern:", err));
+}
+
+async function getTopScores(limit = 20) {
+    const snapshot = await get(ref(db, 'highscores'));
+    if (!snapshot.exists()) return [];
+    const scoresArray = Object.entries(snapshot.val()).map(([name, data]) => ({ name, score: data.score }));
+    scoresArray.sort((a, b) => b.score - a.score);
+    return scoresArray.slice(0, limit);
+}
+
+function drawHighscores(scores) {
+    ctx.fillStyle = "white";
+    ctx.font = "20px sans-serif";
+    ctx.fillText("Highscores:", 20, 80);
+    scores.forEach((entry, i) => {
+        ctx.fillText(`${i + 1}. ${entry.name}: ${entry.score}`, 20, 110 + i * 25);
+    });
+}
+
 function createObstacle() {
     const type = Math.random() < 0.5 ? "rect" : "logo";
     const obstacle = {
@@ -82,7 +134,7 @@ function createObstacle() {
     // Manchmal zufällige Pause
     if (Math.random() < 0.2) nextObstacleIn += randomRange(50, 300);
 }
-
+// --- Wolken Zeichnen
 function drawClouds() {
     ctx.fillStyle = "rgba(255,255,255,0.6)";
     clouds.forEach(c => {
@@ -118,7 +170,6 @@ function jump() {
     if (!player.jumping && !gameOver) {
         player.vy = -15;
         player.jumping = true;
-
         // einmaliger Kamerakick beim Absprung
         cameraTargetY = 5; // alles bewegt sich leicht nach unten
     }
@@ -137,7 +188,9 @@ function restart() {
     player.vy = 0;
     obstacles.length = 0;
     nextObstacleIn = randomRange(200, 500);
+    highscoreSaved = false; // Reset, damit beim nächsten Game Over wieder gespeichert werden kann
 }
+
 
 // --- Game Loop ---
 function update() {
@@ -188,6 +241,13 @@ function update() {
             gameOver = true;
         }
 
+        if (gameOver && !highscoreSaved) {
+            const playerName = getPlayerName();
+            saveScore(playerName, score);
+            highscoreSaved = true;
+            getTopScores().then(scores => currentTopScores = scores);
+        }
+
         // Punkt + entfernen
         if (o.x + o.width < 0) {
             obstacles.splice(i, 1);
@@ -222,8 +282,8 @@ function draw() {
         ctx.moveTo(x, groundTopY + cameraOffsetY);
         ctx.lineTo(x, groundTopY + groundVisualHeight + cameraOffsetY);
         ctx.stroke();
-
     }
+   
 
     // Unterer Boden
     ctx.fillStyle = "#333";
@@ -270,6 +330,8 @@ function draw() {
         ctx.fillText("GAME OVER", canvas.width / 2 - 130, canvas.height / 2);
         ctx.font = "20px sans-serif";
         ctx.fillText("Tippen oder Space zum Neustart", canvas.width / 2 - 150, canvas.height / 2 + 40);
+        // Highscores zeichnen
+        drawHighscores(currentTopScores);
     }
 }
 
