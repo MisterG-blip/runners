@@ -630,14 +630,14 @@ function jump() {
     if (currentState === GAME_STATE.GAME_OVER) {
         // Check if clicking on share button
         const clickEvent = window.lastClickEvent;
-        if (clickEvent && clickEvent.type === 'click' && window.shareButtonBounds) {
+        if (clickEvent && (clickEvent.type === 'click' || clickEvent.type === 'touch') && window.shareButtonBounds) {
             const rect = canvas.getBoundingClientRect();
             const clickX = clickEvent.clientX - rect.left;
             const clickY = clickEvent.clientY - rect.top;
             
             const btn = window.shareButtonBounds;
             
-            // Check if click is inside share button
+            // Check if click/touch is inside share button
             if (clickX >= btn.x && clickX <= btn.x + btn.width &&
                 clickY >= btn.y && clickY <= btn.y + btn.height) {
                 shareScore();
@@ -1097,14 +1097,22 @@ function setupInputHandlers() {
         }
     });
 
-    // Touch/Click
+    // Touch/Click - store events for both
     canvas.addEventListener("touchstart", e => {
         e.preventDefault();
+        // Store touch as click event for button detection
+        if (e.touches && e.touches[0]) {
+            window.lastClickEvent = {
+                type: 'touch',
+                clientX: e.touches[0].clientX,
+                clientY: e.touches[0].clientY
+            };
+        }
         jump();
     });
 
     canvas.addEventListener("click", (e) => {
-        // Store event in global so jump() can access it
+        // Store click event
         window.lastClickEvent = e;
         jump();
     });
