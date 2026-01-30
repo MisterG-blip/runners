@@ -461,6 +461,166 @@ function addCameraShake(intensity) {
 // ============================================
 // PLAYER ACTIONS
 // ============================================
+async function generateShareImage() {
+    // Create offscreen canvas for share image
+    const shareCanvas = document.createElement('canvas');
+    shareCanvas.width = 800;
+    shareCanvas.height = 1000;
+    const sCtx = shareCanvas.getContext('2d');
+    
+    // Background gradient
+    const gradient = sCtx.createLinearGradient(0, 0, 0, shareCanvas.height);
+    gradient.addColorStop(0, '#1a1a2e');
+    gradient.addColorStop(0.5, '#16213e');
+    gradient.addColorStop(1, '#0f3460');
+    sCtx.fillStyle = gradient;
+    sCtx.fillRect(0, 0, shareCanvas.width, shareCanvas.height);
+    
+    // Logo area
+    if (logoImg.complete && logoImg.naturalWidth > 0) {
+        sCtx.drawImage(logoImg, 320, 40, 160, 160);
+    }
+    
+    // Title
+    sCtx.fillStyle = "white";
+    sCtx.font = "bold 64px sans-serif";
+    sCtx.textAlign = "center";
+    sCtx.fillText("RUNNER", 400, 250);
+    
+    // Score - BIG
+    sCtx.fillStyle = "#FFD700";
+    sCtx.font = "bold 96px sans-serif";
+    sCtx.fillText(score, 400, 380);
+    
+    sCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    sCtx.font = "32px sans-serif";
+    sCtx.fillText("Punkte", 400, 430);
+    
+    // Player name
+    const playerName = localStorage.getItem("playerName") || "Anonym";
+    sCtx.fillStyle = "white";
+    sCtx.font = "28px sans-serif";
+    sCtx.fillText(`von ${playerName}`, 400, 480);
+    
+    // Divider line
+    sCtx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    sCtx.lineWidth = 2;
+    sCtx.beginPath();
+    sCtx.moveTo(100, 520);
+    sCtx.lineTo(700, 520);
+    sCtx.stroke();
+    
+    // Top 3 Leaderboard
+    sCtx.fillStyle = "#FFD700";
+    sCtx.font = "bold 32px sans-serif";
+    sCtx.fillText("🏆 Top 3 Scores", 400, 580);
+    
+    if (currentTopScores.length > 0) {
+        sCtx.textAlign = "left";
+        sCtx.font = "24px sans-serif";
+        
+        currentTopScores.slice(0, 3).forEach((entry, i) => {
+            const y = 640 + i * 60;
+            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
+            
+            // Background for each entry
+            sCtx.fillStyle = "rgba(255, 255, 255, 0.1)";
+            sCtx.fillRect(80, y - 35, 640, 50);
+            
+            // Medal
+            sCtx.fillStyle = "#FFD700";
+            sCtx.fillText(medal, 100, y);
+            
+            // Name
+            sCtx.fillStyle = "white";
+            let displayName = entry.name;
+            if (displayName.length > 15) {
+                displayName = displayName.substring(0, 15) + "...";
+            }
+            sCtx.fillText(displayName, 160, y);
+            
+            // Score
+            sCtx.textAlign = "right";
+            sCtx.fillStyle = i === 0 ? "#FFD700" : "#aaa";
+            sCtx.fillText(entry.score, 680, y);
+            sCtx.textAlign = "left";
+        });
+    }
+    
+    // Call to action
+    sCtx.textAlign = "center";
+    sCtx.fillStyle = "white";
+    sCtx.font = "bold 36px sans-serif";
+    sCtx.fillText("Kannst du mich schlagen?", 400, 860);
+    
+    // URL (you'll need to update this with your actual game URL)
+    sCtx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    sCtx.font = "24px sans-serif";
+    const gameUrl = window.location.href;
+    sCtx.fillText(gameUrl, 400, 920);
+    
+    // Hashtags
+    sCtx.fillStyle = "rgba(102, 126, 234, 0.8)";
+    sCtx.font = "20px sans-serif";
+    sCtx.fillText("#RunnerGame #HighScore", 400, 960);
+    
+    // Convert to blob
+    return new Promise(resolve => {
+        shareCanvas.toBlob(blob => resolve(blob), 'image/png');
+    });
+}
+
+async function shareScore() {
+    const playerName = localStorage.getItem("playerName") || "Anonym";
+    const gameUrl = window.location.href;
+    
+    // Create share text
+    const shareText = `🎮 Ich habe ${score} Punkte im Runner erreicht! 🏆\n\nKannst du mich schlagen?\n\n#RunnerGame #HighScore`;
+    
+    try {
+        // Generate share image
+        const imageBlob = await generateShareImage();
+        
+        // Check if Web Share API is available with files support
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'score.png')] })) {
+            const file = new File([imageBlob], 'runner-score.png', { type: 'image/png' });
+            
+            await navigator.share({
+                title: 'Runner - Mein Score',
+                text: shareText,
+                files: [file]
+            });
+        } else {
+            // Fallback: Download image and copy text
+            const url = URL.createObjectURL(imageBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `runner-score-${score}.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            // Copy text to clipboard
+            try {
+                await navigator.clipboard.writeText(shareText + '\n\n' + gameUrl);
+                alert('📸 Screenshot heruntergeladen!\n📋 Text in Zwischenablage kopiert!\n\nJetzt auf Social Media posten! 🚀');
+            } catch {
+                alert('📸 Screenshot heruntergeladen!\n\nTeile es auf Social Media! 🚀');
+            }
+        }
+    } catch (error) {
+        console.error('Share error:', error);
+        
+        // Ultimate fallback: Just text
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(shareText + '\n\n' + gameUrl).then(() => {
+                alert('📋 Score in Zwischenablage kopiert!\n\nJetzt auf Social Media posten! 🚀');
+            });
+        } else {
+            prompt('Kopiere diesen Text zum Teilen:', shareText + '\n\n' + gameUrl);
+        }
+    }
+}
+
 function jump() {
     if (currentState === GAME_STATE.MENU) {
         startGame();
@@ -468,6 +628,23 @@ function jump() {
     }
 
     if (currentState === GAME_STATE.GAME_OVER) {
+        // Check if clicking on share button
+        const clickEvent = window.lastClickEvent;
+        if (clickEvent && clickEvent.type === 'click' && window.shareButtonBounds) {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = clickEvent.clientX - rect.left;
+            const clickY = clickEvent.clientY - rect.top;
+            
+            const btn = window.shareButtonBounds;
+            
+            // Check if click is inside share button
+            if (clickX >= btn.x && clickX <= btn.x + btn.width &&
+                clickY >= btn.y && clickY <= btn.y + btn.height) {
+                shareScore();
+                return; // Don't restart
+            }
+        }
+        
         restart();
         return;
     }
@@ -785,22 +962,45 @@ function drawGameplay() {
         ctx.fillStyle = "#e63946";
         ctx.font = "bold 48px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("GAME OVER", canvas.width / 2, 80);
+        ctx.fillText("GAME OVER", canvas.width / 2, 60);
 
         // Final Score
         ctx.fillStyle = "white";
-        ctx.font = "24px sans-serif";
-        ctx.fillText(`Final Score: ${score}`, canvas.width / 2, 120);
+        ctx.font = "28px sans-serif";
+        ctx.fillText(`Score: ${score}`, canvas.width / 2, 100);
 
-        // Restart hint
+        // Share Button - BIG and obvious
+        const shareButtonY = 130;
+        const shareButtonHeight = 50;
+        const shareButtonWidth = 280;
+        const shareButtonX = canvas.width / 2 - shareButtonWidth / 2;
+        
+        // Button background with gradient
+        const gradient = ctx.createLinearGradient(shareButtonX, shareButtonY, shareButtonX + shareButtonWidth, shareButtonY);
+        gradient.addColorStop(0, '#667eea');
+        gradient.addColorStop(1, '#764ba2');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(shareButtonX, shareButtonY, shareButtonWidth, shareButtonHeight);
+        
+        // Button border/shadow
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(shareButtonX, shareButtonY, shareButtonWidth, shareButtonHeight);
+        
+        // Button text
+        ctx.fillStyle = "white";
+        ctx.font = "bold 20px sans-serif";
+        ctx.fillText("📤 Score Teilen", canvas.width / 2, shareButtonY + 32);
+
+        // Restart hint - below share button
         const pulse = Math.sin(Date.now() * 0.003) * 0.3 + 0.7;
         ctx.fillStyle = `rgba(255, 255, 255, ${pulse})`;
         ctx.font = "16px sans-serif";
-        ctx.fillText("SPACE oder TAP für Neustart", canvas.width / 2, 150);
+        ctx.fillText("oder SPACE für Neustart", canvas.width / 2, 205);
 
         // Highscore List - Centered and Responsive
         if (currentTopScores.length > 0) {
-            const listStartY = 190;
+            const listStartY = 240;
             const listWidth = Math.min(500, canvas.width - 80);
             const listX = canvas.width / 2 - listWidth / 2;
             
@@ -872,8 +1072,16 @@ function drawGameplay() {
             ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
             ctx.font = "18px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("⏳ Lade Highscores...", canvas.width / 2, 250);
+            ctx.fillText("⏳ Lade Highscores...", canvas.width / 2, 280);
         }
+        
+        // Store share button bounds for click detection
+        window.shareButtonBounds = {
+            x: shareButtonX,
+            y: shareButtonY,
+            width: shareButtonWidth,
+            height: shareButtonHeight
+        };
     }
 }
 
@@ -895,7 +1103,11 @@ function setupInputHandlers() {
         jump();
     });
 
-    canvas.addEventListener("click", jump);
+    canvas.addEventListener("click", (e) => {
+        // Store event in global so jump() can access it
+        window.lastClickEvent = e;
+        jump();
+    });
 
     // Mobile button
     const jumpBtn = document.getElementById("jump-btn");
