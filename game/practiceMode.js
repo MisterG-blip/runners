@@ -75,40 +75,58 @@ export function updateGhost(obstacles, canvas, groundHeight, gameSpeed, speedMul
 function _ghostShouldJump(obstacles, canvas, groundHeight, gameSpeed) {
     if (!ghost.active || ghost.jumping) return false;
 
+    // Nächstes relevantes Hindernis vor dem Ghost
     const ahead = obstacles
-        .filter(o => o.x + o.width > ghost.x)
+        .filter(o => o.x + o.width > ghost.x + ghost.width)
         .sort((a, b) => a.x - b.x);
 
     if (!ahead.length) return false;
 
     const next   = ahead[0];
     const gndY   = canvas.height - groundHeight - ghost.height;
+    const obsTop = canvas.height - groundHeight - next.height;
 
+    // Simuliert einen Sprungbogen ab Position (sx, sy)
     function simArc(sx, sy) {
         let px = sx, py = sy, pvy = JUMP_VEL;
         const pts = [];
-        for (let t = 0; t < 120; t++) {
-            pvy += GRAVITY; px += gameSpeed; py += pvy;
+        for (let t = 0; t < 150; t++) {
+            pvy += GRAVITY;
+            px  += gameSpeed;
+            py  += pvy;
             if (py >= gndY) { py = gndY; pvy = 0; }
             pts.push({ x: px, y: py });
-            if (py >= gndY && t > 10) break;
+            if (py >= gndY && t > 15) break;
         }
         return pts;
     }
 
-    const arc     = simArc(ghost.x, ghost.y);
-    const obsTop  = canvas.height - groundHeight - next.height;
+    // Prüft ob ein Bogen das Hindernis kollisionsfrei überquert
+    function arcClearsObs(arc) {
+        return arc.every(p => {
+            const inX = p.x + ghost.width > next.x + 2 && p.x < next.x + next.width - 2;
+            const inY = p.y + ghost.height > obsTop + 2;
+            return !(inX && inY);
+        });
+    }
 
-    const clears = arc.every(p => {
-        const inX = p.x + ghost.width > next.x + 4 && p.x < next.x + next.width - 4;
-        const inY = p.y + ghost.height > obsTop + 4;
-        return !(inX && inY);
-    });
+    // Sprung JETZT würde klappen?
+    const arcNow  = simArc(ghost.x, ghost.y);
+    const nowOk   = arcClearsObs(arcNow);
 
-    const distToObs    = next.x - (ghost.x + ghost.width);
-    const jumpArcWidth = arc[arc.length - 1]?.x - ghost.x || 200;
+    if (!nowOk) return false; // Selbst jetzt zu spät – aufgeben
 
-    return clears && distToObs <= jumpArcWidth * 1.1;
+    // Sprung einen Frame SPÄTER würde noch klappen?
+    const arcNext = simArc(ghost.x + gameSpeed, ghost.y);
+    const nextOk  = arcClearsObs(arcNext);
+
+    // Nur springen wenn JETZT noch geht aber GLEICH nicht mehr → letzter Moment
+    // Zusätzlich: Hindernis muss nah genug sein (innerhalb des Bogenfensters)
+    const distToObs = next.x - (ghost.x + ghost.width);
+    const arcWidth  = arcNow[arcNow.length - 1]?.x - ghost.x || 200;
+
+    // Springe wenn: Hindernis erreichbar UND (nächster Frame zu spät ODER knapp davor)
+    return distToObs <= arcWidth && (!nextOk || distToObs <= gameSpeed * 3);
 }
 
 // ── Replay Recording ──────────────────────────────────────────────────────────

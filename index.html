@@ -26,7 +26,7 @@
             left: 0;
             right: 0;
             z-index: 1000;
-            display: none;
+            display: none;          /* versteckt bis Modus gewählt */
             justify-content: center;
             gap: 14px;
             align-items: center;
@@ -43,6 +43,7 @@
             cursor: pointer;
             user-select: none;
             transition: transform 0.15s, opacity 0.15s;
+            background: rgba(255,255,255,0.1);
         }
         .mobile-btn:active { transform: scale(0.88); }
 
@@ -54,23 +55,34 @@
             box-shadow: 0 6px 18px rgba(102,126,234,0.4);
         }
 
-        #ghost-btn  { background: rgba(0,200,255,0.18); }
-        #slow-btn   { background: rgba(255,190,0,0.18); }
-        #mute-btn   { background: rgba(255,255,255,0.1); font-size: 18px; }
+        #ghost-btn { background: rgba(0,200,255,0.18); }
+        #slow-btn  { background: rgba(255,190,0,0.18); }
+        #mute-btn  { font-size: 18px; }
 
-        .mobile-btn.active { border-color: rgba(255,255,255,0.7); opacity: 1; }
-
-        @media (max-width: 768px) {
-            #mobile-controls { display: flex; }
-        }
-
-        /* Practice-only Buttons – initial hidden, JS zeigt sie */
+        /* Practice-only – initial hidden */
         #practice-controls { display: none; }
+
+        /* ── Name-ändern Button ── */
+        #name-btn {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            z-index: 1001;
+            display: none;          /* nur im Game-Over sichtbar */
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.22);
+            color: rgba(255,255,255,0.65);
+            font-size: 13px;
+            padding: 8px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        #name-btn:active { opacity: 0.5; }
 
         .loading {
             position: fixed;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             color: white;
             font-size: 20px;
@@ -81,9 +93,10 @@
 <body>
     <canvas id="game"></canvas>
 
+    <!-- Mobile Controls: erscheinen erst nach Moduswahl -->
     <div id="mobile-controls">
-        <!-- Practice-only Buttons (links) -->
-        <div id="practice-controls" style="display:flex;gap:10px;">
+        <!-- Practice-only (links) -->
+        <div id="practice-controls" style="display:none;gap:10px;align-items:center;">
             <button class="mobile-btn" id="ghost-btn" title="Ghost-Bot">👻</button>
             <button class="mobile-btn" id="slow-btn"  title="Slow-Motion">🐢</button>
         </div>
@@ -95,19 +108,46 @@
         <button class="mobile-btn" id="mute-btn" title="Ton ein/aus">🔊</button>
     </div>
 
+    <!-- Name ändern – nur im Game-Over -->
+    <button id="name-btn">✏️ Name ändern</button>
+
     <div class="loading" id="loading">Lade Spiel…</div>
 
     <script type="module" src="main.js"></script>
 
     <script>
-        // Practice-Controls nur anzeigen wenn Practice-Modus
-        // (main.js triggert ein Custom-Event nach Modus-Wahl)
-        window.addEventListener('practiceMode', () => {
-            document.getElementById('practice-controls').style.display = 'flex';
+        const mc       = document.getElementById('mobile-controls');
+        const pc       = document.getElementById('practice-controls');
+        const nameBtn  = document.getElementById('name-btn');
+        const muteBtn  = document.getElementById('mute-btn');
+
+        // Arcade: nur Jump + Mute anzeigen
+        window.addEventListener('arcadeMode', () => {
+            mc.style.display = 'flex';
+            pc.style.display = 'none';
         });
 
-        // Mute-Button Label toggeln
-        document.getElementById('mute-btn')?.addEventListener('click', function() {
+        // Practice: alle Buttons anzeigen
+        window.addEventListener('practiceMode', () => {
+            mc.style.display = 'flex';
+            pc.style.display = 'flex';
+        });
+
+        // Name-Button: nur im Game-Over einblenden
+        window.addEventListener('gameOver', () => {
+            nameBtn.style.display = 'block';
+        });
+        window.addEventListener('gameRestart', () => {
+            nameBtn.style.display = 'none';
+        });
+
+        // Name-Button Aktion
+        nameBtn.addEventListener('click', () => {
+            window.dispatchEvent(new CustomEvent('changeName'));
+        });
+
+        // Mute-Icon toggeln
+        muteBtn?.addEventListener('click', function() {
             this.textContent = this.textContent === '🔊' ? '🔇' : '🔊';
         });
     </script>

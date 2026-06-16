@@ -122,6 +122,8 @@ function chooseMode(mode) {
     setMode(mode);
     if (mode === 'practice') {
         window.dispatchEvent(new CustomEvent('practiceMode'));
+    } else {
+        window.dispatchEvent(new CustomEvent('arcadeMode'));
     }
     // Menü-Musik stoppen, Spiel-Musik starten
     stopMusic();
@@ -143,6 +145,7 @@ function restart() {
     saveState      = 'idle';
     saveRetryCount = 0;
     _shakeFrames   = 0;
+    window.dispatchEvent(new CustomEvent('gameRestart'));
 
     resetPlayer(canvas, GROUND_H);
     resetCamera();
@@ -162,10 +165,11 @@ let _shakeFrames = 0;
 function triggerGameOver() {
     if (!isPlaying()) return;
     setState(GAME_STATE.GAME_OVER);
-    _shakeFrames = 12;   // Overlay wackelt die ersten 12 Frames (~0.2s) mit
+    _shakeFrames = 12;
     addShake(15);
     playHit();
     stopMusic();
+    window.dispatchEvent(new CustomEvent('gameOver'));
 
     if (isArcade() && saveState === 'idle') {
         saveState = 'saving';
@@ -508,6 +512,14 @@ async function _generateShareImage() {
     s.fillText(window.location.href, 400, 900);
     return new Promise(res => sc.toBlob(b => res(b), 'image/png'));
 }
+
+// ── Name ändern ───────────────────────────────────────────────────────────────
+window.addEventListener('changeName', () => {
+    const name = prompt('Neuen Namen eingeben (max. 20 Zeichen):');
+    if (name?.trim()) {
+        localStorage.setItem('playerName', name.trim().slice(0, 20));
+    }
+});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
