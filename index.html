@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Cube Runner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            background: #0a0a0a;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+
+        /* ── Mobile Controls ── */
+        #mobile-controls {
+            position: fixed;
+            bottom: 24px;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .mobile-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.25);
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.15s, opacity 0.15s;
+        }
+        .mobile-btn:active { transform: scale(0.88); }
+
+        #jump-btn {
+            width: 80px;
+            height: 80px;
+            font-size: 26px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 6px 18px rgba(102,126,234,0.4);
+        }
+
+        #ghost-btn  { background: rgba(0,200,255,0.18); }
+        #slow-btn   { background: rgba(255,190,0,0.18); }
+        #mute-btn   { background: rgba(255,255,255,0.1); font-size: 18px; }
+
+        .mobile-btn.active { border-color: rgba(255,255,255,0.7); opacity: 1; }
+
+        @media (max-width: 768px) {
+            #mobile-controls { display: flex; }
+        }
+
+        /* Practice-only Buttons – initial hidden, JS zeigt sie */
+        #practice-controls { display: none; }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="game"></canvas>
+
+    <div id="mobile-controls">
+        <!-- Practice-only Buttons (links) -->
+        <div id="practice-controls" style="display:flex;gap:10px;">
+            <button class="mobile-btn" id="ghost-btn" title="Ghost-Bot">👻</button>
+            <button class="mobile-btn" id="slow-btn"  title="Slow-Motion">🐢</button>
+        </div>
+
+        <!-- Jump (Mitte) -->
+        <button class="mobile-btn" id="jump-btn">↑</button>
+
+        <!-- Mute (rechts) -->
+        <button class="mobile-btn" id="mute-btn" title="Ton ein/aus">🔊</button>
+    </div>
+
+    <div class="loading" id="loading">Lade Spiel…</div>
+
+    <script type="module" src="main.js"></script>
+
+    <script>
+        // Practice-Controls nur anzeigen wenn Practice-Modus
+        // (main.js triggert ein Custom-Event nach Modus-Wahl)
+        window.addEventListener('practiceMode', () => {
+            document.getElementById('practice-controls').style.display = 'flex';
+        });
+
+        // Mute-Button Label toggeln
+        document.getElementById('mute-btn')?.addEventListener('click', function() {
+            this.textContent = this.textContent === '🔊' ? '🔇' : '🔊';
+        });
+    </script>
+</body>
+</html>
