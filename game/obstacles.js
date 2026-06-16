@@ -33,7 +33,7 @@ export function createObstacle(canvas) {
     nextObstacleIn = (350 + Math.random() * 650) * difficultyFactor;
 
     // 20% Chance auf extra Pause
-    if (Math.random() < 0.2) nextObstacleIn += 50 + Math.random() * 250;
+    if (Math.random() < 0.2) nextObstacleIn += 50 + Math.random() * 300;
 }
 
 // Internes Score-Handle damit obstacles.js das Timing berechnen kann
