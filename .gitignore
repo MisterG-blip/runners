@@ -1,4 +1,5 @@
-alt/
+/alt
+/ui/alt
 *.docx/
 *.xcf
 *.zip

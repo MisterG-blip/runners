@@ -42,10 +42,18 @@ import { initClouds, createChampionClouds,
 
 import { drawModeSelect, hitTestMenu }            from './ui/menu.js';
 
-import { drawBackground, drawSpeedLines,
+import { drawSpeedLines,
          drawGround, drawHUD, drawTrajectory,
-         updateSkyGradient, triggerFlash,
-         setProximityLabel }                      from './ui/hud.js';
+         triggerFlash, setProximityLabel }           from './ui/hud.js';
+
+import { drawSky, triggerSkyOverride,
+         getTimeOfDayLabel,
+         getCurrentConstellationName }             from './ui/sky.js';
+
+import { loadWeather, initWeatherParticles,
+         updateWeather, drawWeather,
+         drawOvercast, getWeatherLabel,
+         isWeatherLoaded }                          from './ui/weather.js';
 
 import { drawGameOver, hitTestGameOver,
          drawReplay }                             from './ui/gameOver.js';
@@ -152,7 +160,6 @@ function restart() {
     initObstacles(canvas);
     syncScore(0);
     resetMilestones();
-    updateSkyGradient(0);
 
     if (isPractice()) {
         clearReplay();
@@ -286,25 +293,27 @@ function update() {
     if (scored) {
         score++;
         syncScore(score);
-        // Speed-Formel: identisch mit Original
         gameSpeed = 6 + Math.pow(score, 0.6);
-        // Musik-Tempo anpassen
         setMusicTempo(100 + score * 2);
-        // Sky-Gradient updaten
-        updateSkyGradient(score);
 
         // Meilenstein-Check (10/20/30/40/50)
         const milestone = checkMilestone(score);
         if (milestone !== null) {
             const idx = [10,20,30,40,50].indexOf(milestone);
             playMilestone(idx + 1);
-            triggerFlash('#ffffff', 0.4);
+
+            // Kurzer heller Flash — schnell, aber sichtbar
+            const flashColors = ['#ffffff', '#dd88ff', '#ff4488', '#ff8800', '#00ff88'];
+            triggerFlash(flashColors[idx], 0.65);
         }
     }
 
     if (proximity) {
         setProximityLabel(proximity, player.y);
     }
+
+    // Wetter-Partikel updaten
+    updateWeather(canvas, sm);
 
     // Ghost Bot
     if (isPractice()) {
@@ -341,8 +350,10 @@ function draw() {
     ctx.save();
     applyToContext(ctx);
 
-    // ── Hintergrund ──────────────────────────────────────────────────────────
-    drawBackground(ctx, canvas);
+    // ── Hintergrund: Tageszeit + Wetter ──────────────────────────────────────
+    drawSky(ctx, canvas);
+    drawOvercast(ctx, canvas);
+    drawWeather(ctx, canvas);
     drawClouds(ctx, canvas);
     drawSpeedLines(ctx, canvas, gameSpeed);
 
@@ -373,7 +384,9 @@ function draw() {
     // HUD
     drawHUD(ctx, canvas, score, gameSpeed, isPractice(),
         { enabled: ghostEnabled, active: ghost.active },
-        slowMotion, paused
+        slowMotion, paused,
+        isWeatherLoaded() ? getWeatherLabel() : null,
+        getTimeOfDayLabel() + '  ·  ' + getCurrentConstellationName()
     );
 
     // Shake-Kontext hier schließen
@@ -529,11 +542,21 @@ async function init() {
     if (loading) loading.style.display = 'none';
 
     setState(GAME_STATE.MODE_SELECT);
-    initClouds(canvas);
+    initClouds(canvas, 'clear');   // wird nach Wetter-Load überschrieben
     resetPlayer(canvas, GROUND_H);
 
     startLoop(update, draw);
     console.log('✅ Loop gestartet');
+
+    // Wetter laden (non-blocking, fragt Standort ab)
+    loadWeather().then(type => {
+        initClouds(canvas, type);
+        initWeatherParticles(canvas);
+        console.log(`🌤 Wetter initialisiert: ${getWeatherLabel()}`);
+    }).catch(e => {
+        initClouds(canvas, 'clear');
+        console.warn('⚠️ Wetter:', e);
+    });
 
     // Firebase im Hintergrund (non-blocking)
     checkAndCrownMonthlyChampion().catch(e => console.warn('⚠️ Champion-Check:', e));

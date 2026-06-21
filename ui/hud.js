@@ -134,7 +134,7 @@ export function drawGround(ctx, canvas, groundHeight, groundOffsetFront, groundO
     }
 }
 
-export function drawHUD(ctx, canvas, score, gameSpeed, isPractice, ghost, slowMotion, paused) {
+export function drawHUD(ctx, canvas, score, gameSpeed, isPractice, ghost, slowMotion, paused, weatherLabel, timeLabel) {
     // Score
     ctx.fillStyle    = 'white';
     ctx.font         = 'bold 32px sans-serif';
@@ -155,6 +155,19 @@ export function drawHUD(ctx, canvas, score, gameSpeed, isPractice, ghost, slowMo
     ctx.fillRect(20, 88, 120, 8);
     ctx.fillStyle = col;
     ctx.fillRect(20, 88, 120 * (pct / 100), 8);
+
+    // Wetter + Tageszeit (oben Mitte)
+    if (weatherLabel || timeLabel) {
+        const label = [timeLabel, weatherLabel].filter(Boolean).join('  ·  ');
+        ctx.save();
+        ctx.globalAlpha  = 0.55;
+        ctx.fillStyle    = 'white';
+        ctx.font         = '13px sans-serif';
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(label, canvas.width / 2, 22);
+        ctx.restore();
+    }
 
     // Practice Badges oben rechts
     if (isPractice) {
@@ -238,7 +251,7 @@ export function drawHUD(ctx, canvas, score, gameSpeed, isPractice, ghost, slowMo
         ctx.fillStyle   = _flashColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.restore();
-        _flashAlpha -= 0.03;
+        _flashAlpha -= 0.025;
         if (_flashAlpha < 0) _flashAlpha = 0;
     }
 }

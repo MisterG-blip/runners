@@ -6,9 +6,22 @@
 const clouds         = [];
 const championClouds = [];
 
-export function initClouds(canvas) {
+export function initClouds(canvas, weatherType = 'clear') {
+    const count = {
+        clear:      1,
+        cloudy:     5,
+        overcast:   8,
+        fog:        10,
+        drizzle:    5,
+        rain:       6,
+        heavy_rain: 4,
+        storm:      7,
+        snow:       3,
+        heavy_snow: 2,
+    }[weatherType] ?? 3;
+
     clouds.length = 0;
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < count; i++) {
         clouds.push({
             x:      Math.random() * canvas.width,
             y:      _rnd(50, canvas.height * 0.4),
