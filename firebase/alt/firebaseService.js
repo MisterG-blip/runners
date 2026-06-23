@@ -52,31 +52,6 @@ export async function loadHallOfFame() {
     }
 }
 
-// Overall Top-Scores: alle Monate zusammenführen (wie Analytics)
-export async function loadOverallTopScores(limit = 10) {
-    if (!firebaseReady) return [];
-    try {
-        const monthlyRef = ref(db, 'monthly_highscores');
-        const snapshot   = await withTimeout(get(monthlyRef), 5000);
-        if (!snapshot.exists()) return [];
-
-        const allScores = [];
-        Object.entries(snapshot.val()).forEach(([month, monthData]) => {
-            if (monthData.scores) {
-                Object.values(monthData.scores).forEach(entry => {
-                    allScores.push({ ...entry, month });
-                });
-            }
-        });
-
-        allScores.sort((a, b) => b.score - a.score);
-        return allScores.slice(0, limit);
-    } catch (err) {
-        console.error('❌ Overall Scores laden:', err);
-        return [];
-    }
-}
-
 export async function saveWinner(month, champion) {
     if (!firebaseReady) return;
     const wRef = ref(db, `monthly_highscores/${month}/winner`);

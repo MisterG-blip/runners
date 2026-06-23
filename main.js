@@ -56,10 +56,10 @@ import { loadWeather, initWeatherParticles,
          isWeatherLoaded }                          from './ui/weather.js';
 
 import { drawGameOver, hitTestGameOver,
-         drawReplay }                             from './ui/gameOver.js';
+         drawReplay, setActiveTab }               from './ui/gameOver.js';
 
 import { saveScore, loadCurrentMonthScores,
-         loadHallOfFame }                         from './firebase/firebaseService.js';
+         loadHallOfFame, loadOverallTopScores }   from './firebase/firebaseService.js';
 
 import { checkAndCrownMonthlyChampion }           from './firebase/gameRules.js';
 
@@ -107,7 +107,8 @@ let groundOffsetFront = 0;
 let groundOffsetBack  = 0;
 
 let currentTopScores = [];
-let hallOfFame       = [];
+let hallOfFame       = [];   // Wolken – monatliche Champions
+let overallTopScores = [];   // Overall Tab – Top 10 aller Zeiten
 
 // Score-Save State
 let saveState      = 'idle';
@@ -208,13 +209,11 @@ function onJump() {
         const pos    = getLastClickPos();
         const action = hitTestGameOver(pos.x, pos.y);
         if (action === 'replay' && isPractice() && hasReplayFrames()) {
-            startReplay();
-            return;
+            startReplay(); return;
         }
-        if (action === 'share') {
-            shareScore();
-            return;
-        }
+        if (action === 'share')       { shareScore(); return; }
+        if (action === 'tabMonth')    { setActiveTab('month');   return; }
+        if (action === 'tabOverall')  { setActiveTab('overall'); return; }
         restart();
         startMusic();
         return;
@@ -398,10 +397,10 @@ function draw() {
             _shakeFrames--;
             ctx.save();
             applyToContext(ctx);
-            drawGameOver(ctx, canvas, score, currentTopScores, isPractice() && hasReplayFrames());
+            drawGameOver(ctx, canvas, score, currentTopScores, isPractice() && hasReplayFrames(), overallTopScores);
             ctx.restore();
         } else {
-            drawGameOver(ctx, canvas, score, currentTopScores, isPractice() && hasReplayFrames());
+            drawGameOver(ctx, canvas, score, currentTopScores, isPractice() && hasReplayFrames(), overallTopScores);
         }
     }
 }
@@ -565,9 +564,14 @@ async function init() {
         hallOfFame = champs;
         if (champs.length) {
             createChampionClouds(champs);
-            console.log(`👑 ${champs.length} Champions geladen`);
+            console.log(`👑 ${champs.length} Hall of Fame geladen`);
         }
     }).catch(e => console.warn('⚠️ Hall of Fame:', e));
+
+    loadOverallTopScores().then(s => {
+        overallTopScores = s;
+        console.log(`🌍 ${s.length} Overall-Scores geladen`);
+    }).catch(e => console.warn('⚠️ Overall Scores:', e));
 
     loadCurrentMonthScores().then(s => {
         currentTopScores = s;

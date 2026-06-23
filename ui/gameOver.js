@@ -1,16 +1,24 @@
 // ============================================================================
 // MODULE: Game Over UI
 // PURPOSE: Game-Over-Screen mit Replay-, Share- und Neustart-Buttons
+//          + Tabs: Monats-Bestenliste / Overall Top 10
 // ============================================================================
 
-import { getCurrentMonth } from '../utils/date.js';
-
 export const gameOverUI = {
-    replayBtn: null,   // { x, y, w, h }
-    shareBtn:  null
+    replayBtn:      null,
+    shareBtn:       null,
+    tabMonthBtn:    null,
+    tabOverallBtn:  null,
 };
 
-export function drawGameOver(ctx, canvas, score, currentTopScores, hasPracticeReplay) {
+// Aktiver Tab: 'month' | 'overall'
+let _activeTab = 'month';
+
+export function setActiveTab(tab) { _activeTab = tab; }
+export function getActiveTab()    { return _activeTab; }
+export function toggleTab()       { _activeTab = _activeTab === 'month' ? 'overall' : 'month'; }
+
+export function drawGameOver(ctx, canvas, score, currentTopScores, hasPracticeReplay, hallOfFame = []) {
     ctx.fillStyle = 'rgba(0,0,0,0.85)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -37,14 +45,9 @@ export function drawGameOver(ctx, canvas, score, currentTopScores, hasPracticeRe
         grad.addColorStop(0, '#e63946');
         grad.addColorStop(1, '#c0392b');
         ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.roundRect(btnX, nextY, btnW, btnH, 8);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-        ctx.lineWidth   = 2;
-        ctx.beginPath();
-        ctx.roundRect(btnX, nextY, btnW, btnH, 8);
-        ctx.stroke();
+        ctx.beginPath(); ctx.roundRect(btnX, nextY, btnW, btnH, 8); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(btnX, nextY, btnW, btnH, 8); ctx.stroke();
         ctx.fillStyle    = 'white';
         ctx.font         = 'bold 20px sans-serif';
         ctx.textBaseline = 'middle';
@@ -57,17 +60,11 @@ export function drawGameOver(ctx, canvas, score, currentTopScores, hasPracticeRe
 
     // ── Share-Button ──────────────────────────────────────────────────────
     const grad2 = ctx.createLinearGradient(btnX, nextY, btnX + btnW, nextY);
-    grad2.addColorStop(0, '#667eea');
-    grad2.addColorStop(1, '#764ba2');
+    grad2.addColorStop(0, '#667eea'); grad2.addColorStop(1, '#764ba2');
     ctx.fillStyle = grad2;
-    ctx.beginPath();
-    ctx.roundRect(btnX, nextY, btnW, btnH, 8);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth   = 2;
-    ctx.beginPath();
-    ctx.roundRect(btnX, nextY, btnW, btnH, 8);
-    ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(btnX, nextY, btnW, btnH, 8); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(btnX, nextY, btnW, btnH, 8); ctx.stroke();
     ctx.fillStyle    = 'white';
     ctx.font         = 'bold 20px sans-serif';
     ctx.textBaseline = 'middle';
@@ -76,76 +73,117 @@ export function drawGameOver(ctx, canvas, score, currentTopScores, hasPracticeRe
     nextY += btnH + 12;
 
     // ── Restart-Hint ──────────────────────────────────────────────────────
-    const pulse       = Math.sin(Date.now() * 0.003) * 0.3 + 0.7;
-    ctx.fillStyle     = `rgba(255,255,255,${pulse})`;
-    ctx.font          = '16px sans-serif';
-    ctx.textBaseline  = 'alphabetic';
+    const pulse = Math.sin(Date.now() * 0.003) * 0.3 + 0.7;
+    ctx.fillStyle    = `rgba(255,255,255,${pulse})`;
+    ctx.font         = '16px sans-serif';
+    ctx.textBaseline = 'alphabetic';
     ctx.fillText('oder SPACE für Neustart', cx, nextY + 10);
     nextY += 36;
 
-    // ── Highscore-Liste ───────────────────────────────────────────────────
-    const listStartY = nextY + 10;
+    // ── Tabs ──────────────────────────────────────────────────────────────
+    const listW = Math.min(480, canvas.width - 60);
+    const listX = cx - listW / 2;
+    const tabY  = nextY + 8;
+    const tabW  = listW / 2 - 2;
+    const tabH  = 34;
 
-    if (currentTopScores?.length > 0) {
-        const listW = Math.min(500, canvas.width - 80);
-        const listX = cx - listW / 2;
+    // Tab: Monat
+    const monthActive = _activeTab === 'month';
+    ctx.fillStyle = monthActive ? '#FFD700' : 'rgba(255,255,255,0.12)';
+    ctx.beginPath();
+    ctx.roundRect(listX, tabY, tabW, tabH, [8, 0, 0, 8]);
+    ctx.fill();
+    ctx.fillStyle    = monthActive ? '#1a1a2e' : 'rgba(255,255,255,0.55)';
+    ctx.font         = `${monthActive ? 'bold ' : ''}14px sans-serif`;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`🏆 Monat`, listX + tabW / 2, tabY + tabH / 2);
+    gameOverUI.tabMonthBtn = { x: listX, y: tabY, w: tabW, h: tabH };
 
-        ctx.fillStyle = 'rgba(255,215,0,0.2)';
-        ctx.fillRect(listX - 10, listStartY - 5, listW + 20, 40);
-        ctx.fillStyle    = '#FFD700';
-        ctx.font         = 'bold 20px sans-serif';
-        ctx.textAlign    = 'center';
-        ctx.textBaseline = 'alphabetic';
-        ctx.fillText(`🏆 Top Scores – ${getCurrentMonth()}`, cx, listStartY + 22);
+    // Tab: Overall
+    const overallActive = _activeTab === 'overall';
+    ctx.fillStyle = overallActive ? '#FFD700' : 'rgba(255,255,255,0.12)';
+    ctx.beginPath();
+    ctx.roundRect(listX + tabW + 4, tabY, tabW, tabH, [0, 8, 8, 0]);
+    ctx.fill();
+    ctx.fillStyle    = overallActive ? '#1a1a2e' : 'rgba(255,255,255,0.55)';
+    ctx.font         = `${overallActive ? 'bold ' : ''}14px sans-serif`;
+    ctx.fillText(`👑 Overall Top 10`, listX + tabW + 4 + tabW / 2, tabY + tabH / 2);
+    gameOverUI.tabOverallBtn = { x: listX + tabW + 4, y: tabY, w: tabW, h: tabH };
 
-        ctx.textAlign = 'left';
-        ctx.font      = '15px sans-serif';
-        const lineH       = 24;
-        const available   = canvas.height - listStartY - 80;
-        const show        = Math.min(currentTopScores.length, Math.floor(available / lineH), 20);
+    // ── Liste ─────────────────────────────────────────────────────────────
+    const listTop  = tabY + tabH + 8;
+    const lineH    = 28;
+    const scores   = _activeTab === 'month' ? currentTopScores : hallOfFame;
+    const maxShow  = _activeTab === 'month' ? 20 : 10;
+    const available = canvas.height - listTop - 20;
+    const show      = Math.min(scores?.length ?? 0, Math.floor(available / lineH), maxShow);
 
-        currentTopScores.slice(0, show).forEach((entry, i) => {
-            const y = listStartY + 50 + i * lineH;
-            if (i % 2 === 0) {
-                ctx.fillStyle = 'rgba(255,255,255,0.05)';
-                ctx.fillRect(listX - 10, y - 16, listW + 20, lineH);
-            }
+    if (scores?.length > 0) {
+        scores.slice(0, show).forEach((entry, i) => {
+            const rowY = listTop + i * lineH;
+
+            // Zebra
+            ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'transparent';
+            ctx.fillRect(listX - 8, rowY, listW + 16, lineH);
+
+            // Medal / Nummer
             const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
-            ctx.fillStyle    = i < 3 ? '#FFD700' : 'white';
-            ctx.textBaseline = 'alphabetic';
-            ctx.fillText(medal, listX, y);
+            ctx.fillStyle    = i < 3 ? '#FFD700' : 'rgba(255,255,255,0.5)';
+            ctx.font         = i < 3 ? 'bold 14px sans-serif' : '13px sans-serif';
+            ctx.textAlign    = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(medal, listX, rowY + lineH / 2);
 
+            // Name — abschneiden wenn zu lang
             ctx.fillStyle = 'white';
-            let name = entry.name;
-            const maxW = listW - 100;
-            if (ctx.measureText(name).width > maxW) {
-                while (ctx.measureText(name + '…').width > maxW && name.length > 0) name = name.slice(0, -1);
-                name += '…';
+            ctx.font      = '14px sans-serif';
+            const scoreStr  = `${entry.score}`;
+            const monthStr  = _activeTab === 'overall' && entry.month ? entry.month : '';
+            const rightW    = ctx.measureText(scoreStr).width + (monthStr ? ctx.measureText(monthStr).width + 12 : 0) + 10;
+            const maxNameW  = listW - 40 - rightW;
+            let name = entry.name ?? '?';
+            while (ctx.measureText(name).width > maxNameW && name.length > 1) {
+                name = name.slice(0, -1);
             }
-            ctx.fillText(name, listX + 45, y);
+            if (name !== entry.name) name += '…';
+            ctx.fillText(name, listX + 38, rowY + lineH / 2);
 
-            ctx.fillStyle = i < 3 ? '#FFD700' : '#aaa';
+            // Monat (Overall Tab)
+            if (monthStr) {
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.font      = '11px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(monthStr, listX + listW - ctx.measureText(scoreStr).width - 12, rowY + lineH / 2);
+            }
+
+            // Score
+            ctx.fillStyle = i < 3 ? '#FFD700' : '#aaaaaa';
+            ctx.font      = 'bold 14px sans-serif';
             ctx.textAlign = 'right';
-            ctx.fillText(`${entry.score}`, listX + listW, y);
-            ctx.textAlign = 'left';
+            ctx.fillText(scoreStr, listX + listW, rowY + lineH / 2);
         });
 
-        if (currentTopScores.length > show) {
-            ctx.fillStyle    = 'rgba(255,255,255,0.5)';
-            ctx.font         = '13px sans-serif';
+        if ((scores?.length ?? 0) > show) {
+            ctx.fillStyle    = 'rgba(255,255,255,0.4)';
+            ctx.font         = '12px sans-serif';
             ctx.textAlign    = 'center';
-            ctx.fillText(`… und ${currentTopScores.length - show} weitere`, cx, listStartY + 50 + show * lineH + 10);
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`… und ${scores.length - show} weitere`, cx, listTop + show * lineH + 14);
         }
     } else {
-        ctx.fillStyle    = 'rgba(255,255,255,0.6)';
-        ctx.font         = '18px sans-serif';
+        ctx.fillStyle    = 'rgba(255,255,255,0.5)';
+        ctx.font         = '16px sans-serif';
         ctx.textAlign    = 'center';
-        ctx.fillText('⏳ Lade Highscores…', cx, listStartY + 30);
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⏳ Lade…', cx, listTop + 30);
     }
 }
 
 export function hitTestGameOver(x, y) {
-    if (_hit(gameOverUI.replayBtn, x, y)) return 'replay';
+    if (_hit(gameOverUI.replayBtn,     x, y)) return 'replay';
+    if (_hit(gameOverUI.tabMonthBtn,   x, y)) return 'tabMonth';
+    if (_hit(gameOverUI.tabOverallBtn, x, y)) return 'tabOverall';
     const sb = gameOverUI.shareBtn;
     if (sb && x >= sb.x && x <= sb.x + sb.width && y >= sb.y && y <= sb.y + sb.height) return 'share';
     return 'restart';
